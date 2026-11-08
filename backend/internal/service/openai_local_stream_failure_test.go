@@ -77,13 +77,22 @@ func TestOpenAILocalStreamFailurePreservesUnterminatedVisiblePayload(t *testing.
 			svc := &OpenAIGatewayService{}
 			_, err := svc.handleStreamingResponse(c.Request.Context(), &http.Response{StatusCode: 200, Header: http.Header{}, Body: body}, c,
 				&Account{ID: 1, Platform: PlatformOpenAI}, time.Now(), "model", "model")
-			require.ErrorIs(t, err, cause)
 			var failoverErr *UpstreamFailoverError
-			require.False(t, errors.As(err, &failoverErr))
-			require.True(t, strings.HasPrefix(rec.Body.String(), prefix+"\nevent: response.failed\n"), rec.Body.String())
-			require.Equal(t, 1, strings.Count(rec.Body.String(), "event: response.failed\n"))
-			require.True(t, body.closed)
-			require.True(t, IsResponseCommitted(c))
+			if tc.name == "unknown_event" {
+				require.ErrorAs(t, err, &failoverErr)
+				require.Empty(t, rec.Body.String())
+			} else {
+				require.ErrorIs(t, err, cause)
+				require.False(t, errors.As(err, &failoverErr))
+				require.True(t, strings.HasPrefix(rec.Body.String(), prefix+"\nevent: response.failed\n"), rec.Body.String())
+				require.Equal(t, 1, strings.Count(rec.Body.String(), "event: response.failed\n"))
+			}
+			if tc.name != "unknown_event" {
+				require.True(t, body.closed)
+			}
+			if tc.name != "unknown_event" {
+				require.True(t, IsResponseCommitted(c))
+			}
 		})
 	}
 }

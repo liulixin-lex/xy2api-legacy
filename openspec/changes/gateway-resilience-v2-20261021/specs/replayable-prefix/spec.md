@@ -4,16 +4,24 @@
 
 ### Requirement: One replayable-prefix rule for every stream path
 
-The gateway MUST classify each complete upstream SSE event as prelude, content, terminal success, terminal failure (retryable or not) or unknown with one shared function, and every covered stream path (native Responses staging and pending lines, Chat and Messages compatibility conversion, delivery tracking) MUST use it. Unknown events MUST be treated as content.
+The gateway MUST classify each complete upstream SSE event as prelude, content, terminal success, terminal failure (retryable or not) or unknown with one shared function, and every covered stream path (native Responses staging and pending lines, Chat and Messages compatibility conversion, delivery tracking) MUST use it. A Responses event type outside the shared known-event set MUST be treated as prelude regardless of payload fields. It stays staged until semantic output or a terminal event; an output-before-failure retry discards it.
 
 Prelude events are:
 - Responses: `response.created`, `response.in_progress`, `response.queued`, `keepalive`, `response.metadata` (exact type only, with `stream.native_prelude_whitelist` on; revised 2026-10-22, see design §3.1), and `response.output_item.added`, `response.content_part.added` or `response.reasoning_summary_part.added` whose known fields are all empty (no text, no encrypted reasoning, no tool arguments, no unknown non-empty field);
 - Chat: a chunk that carries only the role, or an empty content delta;
 - Messages: `message_start`, `ping`, and `content_block_start` of an empty text or thinking block.
 
-#### Scenario: Unknown event is content
-- **WHEN** an upstream Responses stream sends an event type the gateway does not know before any content
-- **THEN** the event is treated as content and the request is no longer switched to another account.
+#### Scenario: Unknown event with content remains staged
+- **WHEN** an upstream Responses stream sends an event type outside the known-event set, with non-empty content, before any known content event
+- **THEN** the event is treated as prelude and the request can still switch accounts before semantic output.
+
+#### Scenario: Unknown event is released in order after semantic output
+- **WHEN** an upstream Responses stream sends an unrecognized event with arbitrary fields, then sends semantic output
+- **THEN** the event stays staged, does not count as semantic output, and is released before the later output in its original byte order.
+
+#### Scenario: Unknown event is discarded on pre-output timeout
+- **WHEN** an upstream Responses stream sends only unrecognized event types until the first-output deadline
+- **THEN** the attempt switches accounts and none of its staged events reach the client.
 
 #### Scenario: Codex metadata event is not prelude (CV-9)
 - **WHEN** an upstream sends `codex.response.metadata` after `response.created` and before any text, then fails
