@@ -19,8 +19,8 @@ func TestClassifyStreamEvent(t *testing.T) {
 		{"created", "responses", "", `{"type":"response.created","response":{"id":"resp_a"}}`, Prelude, false},
 		{"queued", "responses", "response.queued", `{}`, Prelude, false},
 		{"keepalive", "responses", "keepalive", `{}`, Prelude, false},
-		{"unknown_metadata", "responses", "vendor.rate_limits", `{}`, Content, false},
-		{"unknown_codex", "responses", "codex.unverified", `{}`, Content, false},
+		{"unknown_metadata", "responses", "vendor.rate_limits", `{}`, Prelude, false},
+		{"unknown_codex", "responses", "codex.unverified", `{}`, Prelude, false},
 		{"empty_message", "responses", "response.output_item.added", `{"item":{"type":"message","role":"assistant","content":[]}}`, Prelude, false},
 		{"unknown_item_payload", "responses", "response.output_item.added", `{"item":{"type":"message","content":[],"vendor_payload":"opaque"}}`, Content, false},
 		{"unknown_part_payload", "responses", "response.content_part.added", `{"part":{"type":"output_text","text":"","annotation":{"value":"opaque"}}}`, Content, false},
@@ -290,8 +290,8 @@ func TestResponsesEventOutputDisposition(t *testing.T) {
 		{name: "completed duplicate response key", event: "response.completed", payload: `{"type":"response.completed","response":{"output":[],"output":[]}}`, visible: true, semanticOutput: true},
 		{name: "completed non-array output", event: "response.completed", payload: `{"type":"response.completed","response":{"output":{}}}`, visible: true, semanticOutput: true},
 		{name: "completed with text", event: "response.completed", payload: `{"type":"response.completed","response":{"output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"done"}]}]}}`, visible: true, semanticOutput: true},
-		{name: "unknown response event", event: "response.vendor_extension", payload: `{"type":"response.vendor_extension","future":true}`, visible: true, semanticOutput: true},
-		{name: "unknown response event with recursively empty extra", event: "response.vendor_extension", payload: `{"type":"response.vendor_extension","extra":{"x":[null,{},""]}}`, visible: true, semanticOutput: true},
+		{name: "unknown response event", event: "response.vendor_extension", payload: `{"type":"response.vendor_extension","future":true}`, placeholder: true},
+		{name: "unknown response event with recursively empty extra", event: "response.vendor_extension", payload: `{"type":"response.vendor_extension","extra":{"x":[null,{},""]}}`, placeholder: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
